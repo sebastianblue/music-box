@@ -50,6 +50,10 @@
     background:linear-gradient(180deg,var(--shine),rgba(255,255,255,0));
     border-radius:12px 12px 40% 40%;pointer-events:none;
   }
+  body.eco-mode .glass,body.eco-mode #panel,body.eco-mode #songPanel,
+  body.eco-mode .aeroWindow,body.eco-mode #tourCard,body.eco-mode #startCard{backdrop-filter:none!important}
+  body.eco-mode #orbits,body.eco-mode .chip.hand-param,body.eco-mode .loopLamp,
+  body.eco-mode #tourSpotlight::after,body.eco-mode #tourCard::before,body.eco-mode #tourVisual::before{animation:none!important}
   .aerobtn{
     background:linear-gradient(180deg,#eafaff 0%,#9adcff 45%,#3fa9e8 55%,#7fd0ff 100%);
     border:1px solid rgba(255,255,255,.85);
@@ -955,8 +959,16 @@
           <option value="mandala">Spectral Mandala</option>
           <option value="flow">Flow Field</option>
         </select>
+        <label class="fld">Performance mode</label>
+        <select id="performanceMode">
+          <option value="auto">Auto · balance quality and load</option>
+          <option value="eco">Eco · cooler and quieter</option>
+          <option value="full">Full · maximum visual detail</option>
+        </select>
+        <div class="surfaceSelection" id="performanceModeStatus">Auto · checking this device</div>
         <div class="inline"><label class="fld" style="flex:1">Blend over camera</label><span class="val" id="visOpVal">85%</span></div>
         <input type="range" id="visOp" min="10" max="100" step="1" value="85">
+        <div class="hint"><b>Eco</b> keeps the audio engine intact while reducing canvas resolution, visual particles, glow work, hand-model frequency, camera resolution, and drawing to about 30 fps. This preference stays on this device and is not stored in musical presets.</div>
       </div>
     </details>
 
@@ -1240,6 +1252,29 @@ const state = {
   },
   dark:false, vis:'off', visOp:0.85,
 };
+const PERFORMANCE_MODE_KEY='sebbys-performance-mode-v1';
+let savedPerformanceMode='auto';
+try{savedPerformanceMode=localStorage.getItem(PERFORMANCE_MODE_KEY)||'auto';}catch(e){}
+const performanceCfg={mode:['auto','eco','full'].includes(savedPerformanceMode)?savedPerformanceMode:'auto'};
+let performanceEco=false,renderDpr=Math.min(window.devicePixelRatio||1,2),lastHeavyFrame=0,lastHandInference=0;
+function shouldUseEcoMode(){
+  if(performanceCfg.mode==='eco')return true;
+  if(performanceCfg.mode==='full')return false;
+  const reduced=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const modestCpu=(navigator.hardwareConcurrency||8)<=4;
+  const modestMemory=Number.isFinite(navigator.deviceMemory)&&navigator.deviceMemory<=4;
+  return !!(reduced||modestCpu||modestMemory||cameraOn||state.vis!=='off');
+}
+function resolvePerformanceMode(){
+  const next=shouldUseEcoMode(),changed=next!==performanceEco;
+  performanceEco=next;renderDpr=performanceEco?1:Math.min(window.devicePixelRatio||1,2);
+  document.body.classList.toggle('eco-mode',performanceEco);
+  const status=document.getElementById('performanceModeStatus');
+  if(status)status.textContent=performanceCfg.mode==='auto'
+    ?`Auto · ${performanceEco?'Eco':'Full'} active`
+    :performanceEco?'Eco active · lower GPU load':'Full active · maximum detail';
+  return changed;
+}
 const lfos = [
   {shape:'sine', rate:0.5, phase:0, val:0, sh:0},
   {shape:'triangle', rate:2, phase:0, val:0, sh:0},
@@ -2689,51 +2724,85 @@ import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@m
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
 const ctx = overlay.getContext('2d');
-let landmarker=null, running=false, cameraOn=false, lastVideoTime=-1;
+let landmarker=null,landmarkerDelegate=null,handModelLoading=false,running=false,cameraOn=false,lastVideoTime=-1;
+const cameraSessionId=Math.random().toString(36).slice(2);let cameraBus=null;
+try{if(typeof BroadcastChannel==='function')cameraBus=new BroadcastChannel('sebbys-music-box-camera-v1');}catch(e){}
 
 async function loadModel(status){
+  const delegate=performanceCfg.mode==='full'?'GPU':'CPU';
+  if(landmarker&&landmarkerDelegate===delegate)return;
+  handModelLoading=true;
+  if(landmarker){try{landmarker.close();}catch(e){}landmarker=null;landmarkerDelegate=null;}
   status.textContent = 'Loading hand-tracking model…';
-  const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
-  landmarker = await HandLandmarker.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-      delegate: "GPU"
-    },
-    numHands: 2,
-    runningMode: "VIDEO"
-  });
+  try{
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    landmarker = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+        delegate
+      },
+      numHands: 2,
+      runningMode: "VIDEO"
+    });
+    landmarkerDelegate=delegate;
+  }finally{handModelLoading=false;}
+}
+function releaseHandModel(){
+  if(landmarker){try{landmarker.close();}catch(e){}}
+  landmarker=null;landmarkerDelegate=null;handModelLoading=false;
 }
 async function startCamera(){
+  const eco=shouldUseEcoMode();
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: { width:{ideal:1280}, height:{ideal:720}, facingMode:'user' }, audio:false });
+    video: { width:{ideal:eco?640:1280}, height:{ideal:eco?360:720}, frameRate:{ideal:eco?24:30}, facingMode:'user' }, audio:false });
   video.srcObject = stream;
   await new Promise(r => video.onloadedmetadata = r);
   await video.play();
 }
+async function syncCameraPerformance(){
+  const track=video.srcObject?.getVideoTracks?.()[0];if(!track)return;
+  const eco=performanceEco;
+  try{await track.applyConstraints({width:{ideal:eco?640:1280},height:{ideal:eco?360:720},frameRate:{ideal:eco?24:30}});}catch(e){}
+}
 async function enableCamera(status){
   if(cameraOn) return true;
-  if(!landmarker) await loadModel(status);
+  await loadModel(status);
   status.textContent='Requesting camera…';
   await startCamera();
   video.style.display='';
   document.body.style.background='';
   cameraOn=true;
+  const qualityChanged=resolvePerformanceMode();await syncCameraPerformance();resize();
+  if(qualityChanged&&state.vis!=='off')setVis(state.vis);
   document.getElementById('cameraToggle').textContent='Turn camera off';
   status.textContent='Camera ready';
+  cameraBus?.postMessage({type:'camera-active',id:cameraSessionId});
   return true;
 }
-function stopCamera(){
+function stopCamera(announce=true){
   video.srcObject?.getTracks().forEach(t=>t.stop());
   video.srcObject=null;video.style.display='none';cameraOn=false;lastVideoTime=-1;
+  releaseHandModel();
+  const qualityChanged=resolvePerformanceMode();resize();
+  if(qualityChanged&&state.vis!=='off')setVis(state.vis);
   decayHand(hands.R);decayHand(hands.L);
   document.getElementById('cameraToggle').textContent='Enable hand camera';
   if(running)document.body.style.background='linear-gradient(180deg,#0a2540,#06121c)';
-  flashStatus('Camera off');
+  if(announce)flashStatus('Camera off');
 }
+if(cameraBus)cameraBus.onmessage=e=>{
+  if(e.data?.type==='camera-active'&&e.data.id!==cameraSessionId&&cameraOn){
+    stopCamera(false);flashStatus('Camera moved to the active music-box tab');
+  }
+};
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden&&cameraOn&&performanceEco)stopCamera(false);
+});
+addEventListener('pagehide',e=>{if(cameraOn)stopCamera(false);else releaseHandModel();if(!e.persisted)cameraBus?.close();});
 function resize(){
-  overlay.width = overlay.clientWidth * devicePixelRatio;
-  overlay.height = overlay.clientHeight * devicePixelRatio;
+  overlay.width = Math.max(1,Math.round(overlay.clientWidth * renderDpr));
+  overlay.height = Math.max(1,Math.round(overlay.clientHeight * renderDpr));
   fitVis();
 }
 addEventListener('resize', resize);
@@ -2771,9 +2840,12 @@ function decayHand(h){
   for(const k of ['open','pinch','tilt','speed']) h[k]=Math.max(0,h[k]-0.07);
 }
 function processHands(){
-  if(!cameraOn || video.currentTime === lastVideoTime) return;
+  if(document.hidden||!cameraOn||!landmarker||handModelLoading||video.currentTime === lastVideoTime) return;
+  const now=performance.now();
+  if(performanceEco&&now-lastHandInference<50)return;
+  lastHandInference=now;
   lastVideoTime = video.currentTime;
-  const res = landmarker.detectForVideo(video, performance.now());
+  const res = landmarker.detectForVideo(video, now);
   const found = res.landmarks || [];
   if(found.length===0){ decayHand(hands.R); decayHand(hands.L); return; }
   const params = found.map(lm=>handParams(lm, null));
@@ -3069,7 +3141,7 @@ addEventListener('keyup',e=>{
 });
 overlay.addEventListener('mousedown',e=>{
   const r=overlay.getBoundingClientRect();
-  const x=(e.clientX-r.left)*devicePixelRatio,y=(e.clientY-r.top)*devicePixelRatio,p=normalizedSurfacePoint(x,y);
+  const x=(e.clientX-r.left)*renderDpr,y=(e.clientY-r.top)*renderDpr,p=normalizedSurfacePoint(x,y);
   surfaceMouse.down=true;surfaceMouse.x=p.x;surfaceMouse.y=p.y;
   if(state.surface.mode==='wheel'){
     const s=sliceAt(x,y);if(s>=0)mouseSlice=s;
@@ -3085,7 +3157,7 @@ overlay.addEventListener('mousedown',e=>{
     }
     const region=surfaceRegionAt(type,x,y);selectSurfaceRegion(type,region);
     if(region){
-      const handlePx=22*devicePixelRatio/Math.max(1,Math.min(overlay.width,overlay.height));
+      const handlePx=22*renderDpr/Math.max(1,Math.min(overlay.width,overlay.height));
       const resize=Math.abs(p.x-(region.x+region.w))<handlePx&&Math.abs(p.y-(region.y+region.h))<handlePx;
       surfaceDrag={kind:resize?'resize':'move',type,region,start:{...p},orig:{x:region.x,y:region.y,w:region.w,h:region.h}};
     }
@@ -3098,7 +3170,7 @@ overlay.addEventListener('mousedown',e=>{
 });
 overlay.addEventListener('mousemove',e=>{
   if(!surfaceMouse.down)return;
-  const r=overlay.getBoundingClientRect(),x=(e.clientX-r.left)*devicePixelRatio,y=(e.clientY-r.top)*devicePixelRatio,p=normalizedSurfacePoint(x,y);
+  const r=overlay.getBoundingClientRect(),x=(e.clientX-r.left)*renderDpr,y=(e.clientY-r.top)*renderDpr,p=normalizedSurfacePoint(x,y);
   surfaceMouse.x=p.x;surfaceMouse.y=p.y;
   if(surfaceDrag){
     if(surfaceDrag.kind==='draw'){
@@ -3531,7 +3603,7 @@ function initVisFeatures(){
   visFeatures.sampleRate=AC.sampleRate;
 }
 function fitVis(){
-  const dpr=Math.min(devicePixelRatio||1,2);
+  const dpr=renderDpr;
   const r=visCanvas.getBoundingClientRect();
   vW=Math.max(1,r.width); vH=Math.max(1,r.height);
   visCanvas.width=Math.round(vW*dpr); visCanvas.height=Math.round(vH*dpr);
@@ -3572,7 +3644,7 @@ function updateVisFeatures(dt){
   if(f.gestureCount) f.displayHue=lerpHue(f.displayHue,f.gestureHue,.035+f.gestureMotion*.18);
 }
 function makeWatercolor(){
-  let W=0,Hh=0,blooms=[];
+  const eco=performanceEco;let W=0,Hh=0,blooms=[];
   function fillPaper(c){c.save();c.globalCompositeOperation='source-over';c.fillStyle='#f6f1e7';c.fillRect(0,0,W,Hh);c.restore();}
   function spawn(f){
     const maxR=lerp(46,Math.min(W,Hh)*0.34,clamp(Math.max(f.onsetStrength,f.gestureLevel),0,1));
@@ -3580,7 +3652,7 @@ function makeWatercolor(){
     const gp=f.gesturePoints?.length?f.gesturePoints[(Math.random()*f.gesturePoints.length)|0]:null;
     blooms.push({x:(gp?gp.x:rnd(0.16,0.84))*W,y:(gp?gp.y:rnd(0.18,0.82))*Hh,r:7,maxR,hue,
       sat:rnd(45,72),age:0,life:rnd(7.5,11.5),lobes:(rnd(4,7)|0),seed:rnd(0,1000)});
-    if(blooms.length>26) blooms.shift();
+    if(blooms.length>(eco?14:26)) blooms.shift();
   }
   return {
     init(c,w,h){W=w;Hh=h;fillPaper(c);},
@@ -3597,7 +3669,7 @@ function makeWatercolor(){
         b.age+=dt;const t=clamp(b.age/b.life,0,1),fade=1-t;
         if(fade<=0)continue;
         b.r=lerp(b.r,b.maxR,0.06);
-        for(let p=0;p<3;p++){
+        for(let p=0;p<(eco?2:3);p++){
           const ang=b.seed+p*2.1+b.age*0.18,off=b.r*0.18;
           const cx=b.x+Math.cos(ang)*off*Math.sin(p+b.seed);
           const cy=b.y+Math.sin(ang)*off*Math.cos(p+b.seed);
@@ -3607,7 +3679,7 @@ function makeWatercolor(){
           g.addColorStop(0.6,`hsla(${b.hue},${b.sat}%,55%,${0.05*fade})`);
           g.addColorStop(1,'hsla(0,0%,100%,0)');
           c.fillStyle=g;c.beginPath();
-          const steps=28;
+          const steps=eco?16:28;
           for(let s=0;s<=steps;s++){
             const a=s/steps*TAU;
             const wob=1+0.12*Math.sin(a*b.lobes+b.seed)+0.06*Math.sin(a*(b.lobes+3)-b.seed);
@@ -3623,7 +3695,7 @@ function makeWatercolor(){
   };
 }
 function makeCymatics(){
-  let W=0,Hh=0,P=null;const N=8000;
+  let W=0,Hh=0,P=null;const N=performanceEco?2800:8000;
   let n=3,m=2,tn=3,tm=2,amp=0;
   function pattern(x,y,a,b){return Math.sin(a*Math.PI*x)*Math.sin(b*Math.PI*y)+Math.sin(b*Math.PI*x)*Math.sin(a*Math.PI*y);}
   function seed(c){c.fillStyle='#07060a';c.fillRect(0,0,W,Hh);P=new Float32Array(N*2);for(let i=0;i<N;i++){P[i*2]=Math.random();P[i*2+1]=Math.random();}}
@@ -3664,7 +3736,7 @@ function makeCymatics(){
 function makePond(){
   let gw=0,gh=0,buf1,buf2,off,octx2,img;const damp=0.965;
   function setup(w,h){
-    gw=240;gh=Math.max(80,Math.round(gw*h/Math.max(1,w)));
+    gw=performanceEco?140:240;gh=Math.max(performanceEco?56:80,Math.round(gw*h/Math.max(1,w)));
     buf1=new Float32Array(gw*gh);buf2=new Float32Array(gw*gh);
     off=document.createElement('canvas');off.width=gw;off.height=gh;
     octx2=off.getContext('2d');img=octx2.createImageData(gw,gh);
@@ -3717,7 +3789,7 @@ function makePond(){
   };
 }
 function makeMandala(){
-  let rot=0,sym=6,tsym=6;
+  const eco=performanceEco;let rot=0,sym=6,tsym=6;
   return {
     init(c,w,h){c.fillStyle='#05040a';c.fillRect(0,0,w,h);},
     resize(c,w,h){c.fillStyle='#05040a';c.fillRect(0,0,w,h);},
@@ -3725,14 +3797,14 @@ function makeMandala(){
       const cx=w/2,cy=h/2;
       c.fillStyle='rgba(5,4,10,0.16)';c.fillRect(0,0,w,h);
       const sp=f.spectrum;if(!sp)return;
-      const bins=96,baseR=Math.min(w,h)*0.10,ampR=Math.min(w,h)*0.30;
+      const bins=eco?48:96,baseR=Math.min(w,h)*0.10,ampR=Math.min(w,h)*0.30;
       rot+=dt*(0.1+f.level*0.8+f.gestureLevel*1.1+f.gestureMotion*2.4);
       if(f.rms>0.03)tsym=4+(f.pitchClass>=0?f.pitchClass%6:0);
       else if(f.gestureCount)tsym=3+Math.round(f.gestureLevel*7);
       sym=lerp(sym,tsym,0.04);
       const symN=Math.max(3,Math.round(sym)),hue=f.displayHue;
       c.save();c.translate(cx,cy);c.globalCompositeOperation='lighter';
-      for(let layer=0;layer<2;layer++){
+      for(let layer=0;layer<(eco?1:2);layer++){
         const dir=layer?-1:1,scale=layer?0.62:1,hh2=(hue+layer*40)%360;
         for(let s=0;s<symN;s++){
           c.save();c.rotate(rot*dir+s/symN*TAU);
@@ -3761,7 +3833,7 @@ function makeMandala(){
   };
 }
 function makeFlow(){
-  let pts=[];const N=1500;
+  let pts=[];const N=performanceEco?550:1500;
   function reset(w,h){pts=[];for(let i=0;i<N;i++)pts.push({x:Math.random()*w,y:Math.random()*h,px:0,py:0,h:Math.random()*360});}
   function flow(x,y,t,turb){return (Math.sin(x*0.0025+t*0.2)+Math.cos(y*0.0028-t*0.16)+Math.sin((x+y)*0.0016+t*0.1))*1.1*Math.PI+turb;}
   return {
@@ -3798,6 +3870,8 @@ function makeFlow(){
 const VIS_FACTORIES={watercolor:makeWatercolor,cymatics:makeCymatics,pond:makePond,mandala:makeMandala,flow:makeFlow};
 function setVis(id){
   state.vis=id;
+  const qualityChanged=resolvePerformanceMode();
+  if(qualityChanged){resize();if(cameraOn)syncCameraPerformance();}
   if(id==='off'){ visActive=null; visCanvas.style.display='none'; return; }
   visCanvas.style.display='block';
   visCanvas.style.opacity=state.visOp;
@@ -3814,6 +3888,7 @@ const HAND_TIPS=[4,8,12,16,20];
 const handTrails={R:new Map(),L:new Map()};
 function drawSurfaceHands(){
   const style=state.handOverlay||'skeleton';
+  const trailLimit=performanceEco?5:13;
   for(const [key,hue] of [['R',198],['L',148]]){
     const hd=hands[key],trails=handTrails[key];
     if(style==='hidden'||!hd.present||!hd.joints?.length){trails.clear();continue;}
@@ -3821,7 +3896,7 @@ function drawSurfaceHands(){
     const palm=palmIds.reduce((p,i)=>({x:p.x+j[i].x/palmIds.length,y:p.y+j[i].y/palmIds.length}),{x:0,y:0});
     ctx.save();ctx.globalCompositeOperation='screen';ctx.lineCap='round';ctx.lineJoin='round';
     for(const tip of HAND_TIPS){
-      const trail=trails.get(tip)||[];trail.push({x:j[tip].x,y:j[tip].y});while(trail.length>13)trail.shift();trails.set(tip,trail);
+      const trail=trails.get(tip)||[];trail.push({x:j[tip].x,y:j[tip].y});while(trail.length>trailLimit)trail.shift();trails.set(tip,trail);
       for(let i=1;i<trail.length;i++){
         const a=i/trail.length*.34;
         ctx.beginPath();ctx.moveTo(trail[i-1].x,trail[i-1].y);ctx.lineTo(trail[i].x,trail[i].y);
@@ -3832,7 +3907,7 @@ function drawSurfaceHands(){
       for(const chain of HAND_CHAINS){
         ctx.beginPath();chain.forEach((idx,i)=>i?ctx.lineTo(j[idx].x,j[idx].y):ctx.moveTo(j[idx].x,j[idx].y));
         ctx.strokeStyle=`hsla(${hue},88%,80%,.72)`;ctx.lineWidth=2.1*devicePixelRatio;
-        ctx.shadowColor=`hsla(${hue},95%,67%,.8)`;ctx.shadowBlur=8*devicePixelRatio;ctx.stroke();ctx.shadowBlur=0;
+        ctx.shadowColor=`hsla(${hue},95%,67%,.8)`;ctx.shadowBlur=performanceEco?0:8*devicePixelRatio;ctx.stroke();ctx.shadowBlur=0;
       }
       ctx.save();ctx.setLineDash([4*devicePixelRatio,5*devicePixelRatio]);
       for(const tip of HAND_TIPS){
@@ -4064,8 +4139,12 @@ function frame(ts){
   sendMappedMidiCCs();
   updateMusic(dt);
   transportTick();
-  if(AC){ updateVisFeatures(dt); if(visActive) visActive.frame(vctx,vW,vH,visFeatures,dt); }
-  draw();
+  const heavyDue=!document.hidden&&(!performanceEco||ts-lastHeavyFrame>=1000/30);
+  if(heavyDue){
+    const visualDt=Math.min(.08,(ts-lastHeavyFrame)/1000)||dt;lastHeavyFrame=ts;
+    if(AC){ updateVisFeatures(visualDt); if(visActive) visActive.frame(vctx,vW,vH,visFeatures,visualDt); }
+    draw();
+  }
   requestAnimationFrame(frame);
 }
 
@@ -4827,6 +4906,20 @@ document.getElementById('arpSync').querySelectorAll('button').forEach(b=>{
   };
 });
 document.getElementById('visSelect').onchange=e=>setVis(e.target.value);
+const performanceModeSelect=document.getElementById('performanceMode');
+performanceModeSelect.value=performanceCfg.mode;resolvePerformanceMode();
+performanceModeSelect.onchange=async e=>{
+  performanceCfg.mode=e.target.value;
+  try{localStorage.setItem(PERFORMANCE_MODE_KEY,performanceCfg.mode);}catch(err){}
+  resolvePerformanceMode();lastHeavyFrame=0;resize();
+  if(state.vis!=='off')setVis(state.vis);
+  if(cameraOn){
+    const status=document.getElementById('loadStatus');
+    try{await loadModel(status);await syncCameraPerformance();status.textContent=`${performanceEco?'Eco':'Full'} camera ready`;}
+    catch(err){status.textContent='Could not change hand-tracking quality';}
+  }
+  flashStatus(`${performanceEco?'Eco':'Full'} performance active`);
+};
 
 /* ---------- LFO UI ---------- */
 function buildLfoUI(){
