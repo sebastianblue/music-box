@@ -285,6 +285,7 @@
   #songBtn{position:absolute;top:16px;left:16px;z-index:7;width:44px;height:44px;font-size:19px;border-radius:14px;padding:0;display:none}
   body.playing #songBtn{display:block}
   body.playing #chips{left:70px}
+  body.playing.song-open #chips{left:316px}
   #songTitle{font-size:15px;font-weight:700;color:var(--label);margin-bottom:2px;letter-spacing:.02em;text-align:center}
   #songSub{font-size:10px;color:var(--hint);text-align:center;margin-bottom:10px}
   #chart{font-family:"Trebuchet MS",Georgia,serif}
@@ -1614,7 +1615,10 @@ document.getElementById('songUse').onclick=()=>{
   state.slots = song.uniq.slice(0,16);
   renderSlots();
 };
-document.getElementById('songBtn').onclick=()=>document.getElementById('songPanel').classList.toggle('open');
+document.getElementById('songBtn').onclick=()=>{
+  const open=document.getElementById('songPanel').classList.toggle('open');
+  document.body.classList.toggle('song-open',open);
+};
 function flashStatus(msg){
   const el=document.getElementById('loadStatus');
   if(el){ el.textContent=msg; setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; },3000); }
@@ -2709,7 +2713,7 @@ async function boot(withCamera){
       document.body.style.background='linear-gradient(180deg,#0a2540,#06121c)';
     }
     document.getElementById('startOverlay').style.display='none';
-    document.body.classList.add('playing');
+    document.body.classList.add('playing','song-open');
     document.getElementById('songPanel').classList.add('open');
     resize();
     running=true; lastTs=performance.now();
