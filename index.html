@@ -1929,6 +1929,9 @@ function cutoffApply(x01){
 }
 const bindRange=(id, valId, fmt, cb)=>{
   const el=document.getElementById(id), v=document.getElementById(valId);
+  // Some controls are supplied by optional instrument channel strips.
+  // Do not let an absent strip control abort the entire app at startup.
+  if(!el || !v) return null;
   el.oninput=()=>{ v.textContent=fmt(+el.value); v.classList.remove('modded'); cb(+el.value); };
   return el;
 };
