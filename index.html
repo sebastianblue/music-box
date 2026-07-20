@@ -202,16 +202,42 @@
   .mixGrid label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
   /* ---------- drum grid ---------- */
-  .drumRow{display:flex;align-items:center;gap:4px;margin-bottom:5px}
-  .drumRow .dname{width:44px;flex:none;font-size:10px;font-weight:700;color:var(--sublabel)}
+  .drumToolbar{display:flex;align-items:center;gap:7px;margin:8px 0}
+  .drumToolbar .seg{flex:1}
+  .drumToolbar .seg button{padding:5px 0;font-size:10px}
+  .drumToolbar .miniToggle{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:700;color:var(--sublabel);white-space:nowrap}
+  .drumToolbar input[type=checkbox]{accent-color:var(--aqua)}
+  .drumRow{display:flex;align-items:center;gap:3px;margin-bottom:5px;padding:2px;border-radius:7px}
+  .drumRow.selected{background:rgba(111,198,239,.16);box-shadow:inset 0 0 0 1px rgba(160,222,252,.34)}
+  .drumRow.muted{opacity:.48}
+  .drumRow .dname{width:38px;flex:none;font-size:9px;font-weight:700;color:var(--sublabel);cursor:pointer;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .drumRow .dname:hover{color:var(--label)}
   .drumRow input[type=checkbox]{accent-color:var(--aqua);width:13px;height:13px;flex:none}
+  .soloBtn{width:15px;height:17px;border:1px solid var(--edge);border-radius:5px;padding:0;font:700 8px inherit;
+    color:var(--sublabel);background:linear-gradient(180deg,var(--input-top),var(--input-bot));cursor:pointer}
+  .soloBtn.on{color:#754d00;background:linear-gradient(180deg,#fff4b9,#f4bd3e);box-shadow:0 0 7px rgba(255,207,87,.7)}
   .stepGrid{display:flex;gap:2px;flex:1}
-  .stepCell{flex:1;height:20px;border-radius:5px;cursor:pointer;border:1px solid var(--edge);
+  .stepCell{flex:1;height:20px;min-width:0;border-radius:4px;cursor:pointer;border:1px solid var(--edge);
     background:linear-gradient(180deg,var(--input-top),var(--input-bot))}
   .stepCell:nth-child(4n+1){border-left:2px solid rgba(80,160,210,.8)}
   .stepCell.on{background:linear-gradient(180deg,#8fd8ff,#2f9fe0);box-shadow:0 0 7px rgba(120,210,255,.7)}
+  .stepCell.accent{background:linear-gradient(180deg,#ffe8a3,#ef9f25);box-shadow:0 0 8px rgba(255,194,69,.8)}
+  .stepCell.inactive{opacity:.22;cursor:not-allowed}
   .stepCell.now{outline:2px solid #ffd267;outline-offset:-1px}
   .stepCell.on.now{background:linear-gradient(180deg,#ffe9a8,#f0a830)}
+  .stepCell.accent.now{background:linear-gradient(180deg,#fff7c9,#ffbf30)}
+  .drumLegend{display:flex;justify-content:space-between;gap:8px;margin:6px 0 8px;font-size:9px;color:var(--hint)}
+  .drumLegend b{color:var(--label)}
+  .drumPatterns{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px}
+  .drumPatterns button{font-size:9px;padding:5px 0;border-radius:8px}
+  .trackEditor{margin-top:9px;padding:9px;border-radius:11px;background:linear-gradient(180deg,var(--card-top),var(--card-bot));
+    border:1px solid var(--edge)}
+  .trackEditorHead{display:flex;align-items:center;margin-bottom:3px}
+  .trackEditorHead strong{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--label)}
+  .trackEditor .miniGrid{gap:0 8px}
+  .trackEditor .fld{font-size:9px;margin-top:6px}
+  .trackEditor input[type=range]{height:17px}
 
   /* ---------- mod popup ---------- */
   #modPop{position:fixed;z-index:40;width:240px;padding:14px;display:none;border-radius:14px}
@@ -222,15 +248,22 @@
   #modPop .rowBtns button{font-size:11px;padding:6px 0}
 
   /* ---------- guided tour ---------- */
-  #tourOverlay{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;
-    background:radial-gradient(circle at 50% 44%,rgba(120,210,255,.17),rgba(2,17,30,.78) 58%,rgba(2,12,22,.9));
-    backdrop-filter:blur(8px)}
-  #tourOverlay.open{display:flex;animation:tourFade .24s ease-out}
+  #tourOverlay{position:fixed;inset:0;z-index:60;display:none;pointer-events:none}
+  #tourOverlay.open{display:block;animation:tourFade .24s ease-out}
   @keyframes tourFade{from{opacity:0}to{opacity:1}}
-  #tourCard{width:min(560px,94vw);padding:20px 22px 18px;border-radius:24px;overflow:hidden;
-    background:linear-gradient(165deg,rgba(245,253,255,.92),rgba(183,227,248,.84));
+  #tourSpotlight{position:fixed;display:none;border:2px solid rgba(255,255,255,.98);border-radius:18px;
+    box-shadow:0 0 0 9999px rgba(2,15,27,.72),0 0 38px rgba(112,210,255,.94),inset 0 0 22px rgba(255,255,255,.2);
+    transition:left .32s ease,top .32s ease,width .32s ease,height .32s ease,border-radius .32s ease;
+    pointer-events:none}
+  #tourOverlay.open #tourSpotlight{display:block}
+  #tourSpotlight::after{content:"";position:absolute;inset:-8px;border:1px dashed rgba(175,231,255,.82);
+    border-radius:inherit;animation:tourPulse 1.5s ease-in-out infinite}
+  @keyframes tourPulse{50%{transform:scale(1.025);opacity:.48}}
+  #tourCard{position:fixed;width:min(390px,calc(100vw - 32px));padding:17px 18px 15px;border-radius:20px;overflow:hidden;
+    pointer-events:auto;transition:left .3s ease,top .3s ease;
+    background:linear-gradient(165deg,rgba(245,253,255,.96),rgba(183,227,248,.94));
     border:1px solid rgba(255,255,255,.95);
-    box-shadow:0 24px 80px rgba(0,20,42,.55),inset 0 1px 0 #fff;color:#0b486a;position:relative}
+    box-shadow:0 20px 58px rgba(0,20,42,.52),inset 0 1px 0 #fff;color:#0b486a}
   body.dark #tourCard{background:linear-gradient(165deg,rgba(28,61,91,.96),rgba(8,30,51,.94));color:#d5ecfb}
   #tourCard::before{content:"";position:absolute;inset:-50% auto auto -30%;width:80%;height:160%;
     background:linear-gradient(100deg,transparent,rgba(255,255,255,.34),transparent);
@@ -239,40 +272,32 @@
   #tourTop{display:flex;align-items:center;gap:10px;position:relative}
   #tourKicker{font-size:9px;letter-spacing:.22em;text-transform:uppercase;font-weight:700;color:#3385ad}
   #tourCount{margin-left:auto;font-size:10px;font-weight:700;color:#4486a7}
-  #tourVisual{height:178px;margin:14px 0 16px;border-radius:18px;display:grid;place-items:center;overflow:hidden;position:relative;
-    background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.86),rgba(117,202,239,.35) 43%,rgba(40,128,180,.18));
-    border:1px solid rgba(255,255,255,.9);box-shadow:inset 0 0 38px rgba(255,255,255,.45)}
-  body.dark #tourVisual{background:radial-gradient(circle at 50% 40%,rgba(111,190,231,.32),rgba(12,48,75,.45) 52%,rgba(3,19,34,.72))}
-  #tourVisual .tourWheel{width:138px;height:138px;border-radius:50%;
-    background:conic-gradient(from -25deg,#f38ab7 0 13%,rgba(255,255,255,.5) 13% 28%,#69bde8 28% 43%,rgba(255,255,255,.55) 43% 58%,#8ddbc4 58% 73%,rgba(255,255,255,.5) 73% 86%,#a991dc 86%);
-    border:2px solid #fff;box-shadow:0 0 0 10px rgba(255,255,255,.16),0 12px 30px rgba(20,93,138,.3);
-    animation:tourWheel 12s linear infinite;position:relative}
-  #tourVisual .tourWheel::after{content:"";position:absolute;inset:42%;border-radius:50%;
-    background:radial-gradient(circle at 35% 30%,#fff,#67bde7 58%,#176995);border:1px solid #fff}
-  @keyframes tourWheel{to{transform:rotate(360deg)}}
-  #tourVisual .tourHands{display:flex;align-items:center;gap:30px}
-  #tourVisual .tourHand{width:64px;height:88px;border:3px solid rgba(255,255,255,.95);border-radius:42% 42% 48% 48%;
-    background:linear-gradient(160deg,rgba(242,138,183,.8),rgba(105,189,232,.8));box-shadow:0 10px 26px rgba(25,98,143,.28);
-    animation:tourPinch 1.5s ease-in-out infinite alternate}
-  #tourVisual .tourHand:nth-child(2){animation-delay:-.6s;background:linear-gradient(160deg,rgba(141,219,196,.85),rgba(105,189,232,.8))}
-  @keyframes tourPinch{to{transform:scale(.83) rotate(7deg);filter:brightness(1.15)}}
-  #tourVisual .tourRack{width:min(420px,84%);display:grid;gap:9px}
-  #tourVisual .tourRack i{display:block;height:14px;border-radius:99px;background:linear-gradient(90deg,#68bee9 var(--fill,60%),rgba(255,255,255,.65) var(--fill,60%));
-    border:1px solid rgba(255,255,255,.9);box-shadow:inset 0 1px 3px rgba(20,80,120,.24)}
-  #tourVisual .tourRack i::after{content:"";display:block;width:22px;height:22px;margin-top:-5px;margin-left:calc(var(--fill,60%) - 11px);
-    border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#b7e7ff 46%,#319ed8);border:1px solid #fff;
-    animation:tourKnob 2.2s ease-in-out infinite alternate}
-  @keyframes tourKnob{to{translate:38px 0}}
-  #tourTitle{font-size:24px;line-height:1.1;letter-spacing:-.02em;position:relative}
-  #tourText{font-size:13px;line-height:1.65;margin-top:8px;color:#276b8e;position:relative}
+  #tourVisual{min-height:44px;margin:12px 0 13px;padding:9px 12px;border-radius:13px;display:flex;align-items:center;gap:9px;
+    position:relative;font-size:11px;font-weight:700;color:#236d93;
+    background:linear-gradient(180deg,rgba(255,255,255,.78),rgba(121,204,242,.28));
+    border:1px solid rgba(255,255,255,.9);box-shadow:inset 0 1px 4px rgba(25,92,132,.12)}
+  #tourVisual::before{content:"";width:10px;height:10px;border-radius:50%;flex:none;background:#ef76ab;
+    box-shadow:0 0 0 5px rgba(239,118,171,.15),0 0 14px rgba(239,118,171,.7);animation:tourTaskPulse 1s ease-in-out infinite alternate}
+  #tourVisual.done{color:#176c53;background:linear-gradient(180deg,rgba(231,255,246,.92),rgba(117,222,181,.34))}
+  #tourVisual.done::before{background:#36c886;box-shadow:0 0 0 5px rgba(54,200,134,.15),0 0 14px rgba(54,200,134,.7);animation:none}
+  @keyframes tourTaskPulse{to{transform:scale(.72);opacity:.64}}
+  body.dark #tourVisual{color:#b8ddf2;background:linear-gradient(180deg,rgba(64,108,143,.54),rgba(15,52,78,.46))}
+  body.dark #tourVisual.done{color:#bff2dc;background:linear-gradient(180deg,rgba(41,111,84,.62),rgba(12,60,46,.58))}
+  #tourTitle{font-size:20px;line-height:1.15;letter-spacing:-.02em;position:relative}
+  #tourText{font-size:12px;line-height:1.58;margin-top:7px;color:#276b8e;position:relative}
   body.dark #tourText{color:#a8d3ec}
   #tourDots{display:flex;gap:5px;margin:15px 0 12px;position:relative}
   #tourDots i{width:7px;height:7px;border-radius:50%;background:rgba(48,132,173,.25)}
+  #tourDots i.done{background:#5cc89d}
   #tourDots i.active{width:22px;border-radius:99px;background:linear-gradient(90deg,#ef76ab,#65bde8)}
   #tourActions{display:flex;gap:8px;align-items:center;position:relative}
   #tourActions button{padding:9px 18px;font-size:12px}
   #tourSkip{background:none;border:none;box-shadow:none;color:#397b9c;text-shadow:none}
   #tourNext{margin-left:auto;min-width:92px}
+  #tourNext:disabled{filter:grayscale(.7);opacity:.48;cursor:not-allowed}
+  @media(max-width:720px){
+    #tourCard{width:calc(100vw - 24px);left:12px!important;top:auto!important;bottom:12px}
+  }
 
   /* ---------- song chart (lead-sheet style) ---------- */
   #songPanel{position:absolute;top:0;left:0;bottom:0;z-index:6;width:300px;padding:70px 14px 14px;
@@ -457,13 +482,35 @@
       <div class="sectBody">
         <div class="inline"><label class="fld mappable" style="flex:1" data-mod="swing">Swing ⌁</label><span class="val mappable" id="swingVal" data-mod="swing">0%</span></div>
         <input type="range" id="swing" min="0" max="100" step="1" value="0">
+        <div class="drumToolbar">
+          <span style="font-size:9px;font-weight:700;color:var(--sublabel)">LENGTH</span>
+          <div class="seg" id="drumLength">
+            <button data-len="8">8</button><button data-len="16" class="active">16</button><button data-len="32">32</button>
+          </div>
+          <label class="miniToggle"><input type="checkbox" id="drumFollow" checked> follow</label>
+        </div>
+        <div class="drumToolbar">
+          <span style="font-size:9px;font-weight:700;color:var(--sublabel)">PAGE</span>
+          <div class="seg" id="drumPages">
+            <button data-page="0" class="active">1–16</button><button data-page="1">17–32</button>
+          </div>
+        </div>
         <div id="drumGrid" style="margin-top:10px"></div>
-        <div class="rowBtns">
+        <div class="drumLegend"><span>click: <b>off → hit → accent</b></span><span>right-click: back</span></div>
+        <div id="drumTrackEdit" class="trackEditor"></div>
+        <div class="drumPatterns">
           <button class="aerobtn" id="patBasic">Basic</button>
           <button class="aerobtn" id="patHouse">House</button>
+          <button class="aerobtn" id="patBreak">Break</button>
+          <button class="aerobtn" id="patDisco">Disco</button>
+          <button class="aerobtn" id="patRandom">Random</button>
           <button class="aerobtn" id="patClear">Clear</button>
         </div>
-        <div class="hint">Transport: <b>▶ button</b> up top or <b>Space</b>. Tempo lives in the Play section (and is mappable — LFO on tempo is chaos, hand on tempo is conducting).</div>
+        <div class="rowBtns">
+          <button class="aerobtn" id="drumCopy">Copy page</button>
+          <button class="aerobtn" id="drumPaste">Paste page</button>
+        </div>
+        <div class="hint"><b>8 synthesized voices · up to 32 steps.</b> Click a track name to edit level, tuning, decay, and hit chance. Transport: <b>▶</b> or <b>Space</b>.</div>
       </div>
     </details>
 
@@ -570,20 +617,21 @@
     </div>
   </div>
 
-  <div id="tourOverlay" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+  <div id="tourOverlay" role="dialog" aria-modal="false" aria-labelledby="tourTitle">
+    <div id="tourSpotlight" aria-hidden="true"></div>
     <div id="tourCard">
       <div id="tourTop">
         <span id="tourKicker">quick start</span>
         <span id="tourCount"></span>
       </div>
-      <div id="tourVisual" aria-hidden="true"></div>
+      <div id="tourVisual" aria-live="polite"></div>
       <h2 id="tourTitle"></h2>
       <p id="tourText"></p>
       <div id="tourDots"></div>
       <div id="tourActions">
         <button id="tourSkip" class="aerobtn">close</button>
         <button id="tourBack" class="aerobtn">← back</button>
-        <button id="tourNext" class="aerobtn">next →</button>
+        <button id="tourNext" class="aerobtn" disabled>try it first</button>
       </div>
     </div>
   </div>
@@ -1353,6 +1401,17 @@ async function startCamera(){
   await new Promise(r => video.onloadedmetadata = r);
   await video.play();
 }
+async function enableCamera(status){
+  if(cameraOn) return true;
+  if(!landmarker) await loadModel(status);
+  status.textContent='Requesting camera…';
+  await startCamera();
+  video.style.display='';
+  document.body.style.background='';
+  cameraOn=true;
+  status.textContent='Camera ready';
+  return true;
+}
 function resize(){
   overlay.width = overlay.clientWidth * devicePixelRatio;
   overlay.height = overlay.clientHeight * devicePixelRatio;
@@ -1981,81 +2040,224 @@ function frame(ts){
    ================================================================ */
 const TOUR_STEPS=[
   {
-    kicker:'the instrument',
-    title:'The chord wheel is the whole box.',
-    text:'Each slice is a chord. Point with your right hand, click a slice, or hold keys 1–0 to play without a camera. Edit or add chords in Settings.',
-    visual:'<div class="tourWheel"></div>',
+    id:'wheel', kicker:'01 · play',
+    title:'Play the chord wheel.',
+    text:'Each slice is a chord. With a camera you point using your right hand; without one, you can use the mouse or keys 1–0.',
+    task:'Click and hold any wheel slice.', target:'wheel',
   },
   {
-    kicker:'hand control',
+    id:'settings', kicker:'02 · open the box',
+    title:'Everything lives behind ✦.',
+    text:'Settings contains the synth, hand routing, modulators, rhythm tools, mixer, visuals, chords, and patches.',
+    task:'Click the ✦ Settings button.', target:'#gearBtn',
+  },
+  {
+    id:'hands', kicker:'03 · hand routing',
     title:'Your hands become the controls.',
-    text:'Right-hand position chooses a chord. Pinch swells its volume; wrist tilt adds vibrato. A second hand can control any other parameter you map.',
-    visual:'<div class="tourHands"><i class="tourHand"></i><i class="tourHand"></i></div>',
+    text:'The tour turns on the video here so you can see hand tracking in context. Right pinch controls volume and right tilt controls vibrato by default; either hand can drive either job.',
+    task:'Change either hand-control dropdown.', target:'#mapRows',
   },
   {
-    kicker:'modulation',
+    id:'mod', kicker:'04 · patch anything',
     title:'Double-click every ⌁.',
-    text:'Any label marked ⌁ opens the modulation mapper. Choose either hand or LFO 1/2, then set a positive or negative amount—even envelope A, D, S, and R are patchable.',
-    visual:'<div class="tourRack"><i style="--fill:26%"></i><i style="--fill:62%"></i><i style="--fill:44%"></i></div>',
+    text:'Parameters marked ⌁ can listen to either hand or either LFO. Envelope stages are patchable too.',
+    task:'Double-click D, then choose a source.', target:'#dVal',
   },
   {
-    kicker:'sound design',
-    title:'Draw the sound you want.',
-    text:'Paint oscillator harmonics, drag the ADSR envelope, set detune and octave, then shape the arpeggiator with its own harmonic editor, decay, range, and tempo division.',
-    visual:'<div class="tourRack"><i style="--fill:18%"></i><i style="--fill:76%"></i><i style="--fill:38%"></i><i style="--fill:58%"></i></div>',
+    id:'arp', kicker:'05 · arpeggiate',
+    title:'Turn harmony into motion.',
+    text:'The arp has four note orders, tempo-synced divisions, swing, decay, octave range, and its own drawable harmonic wave.',
+    task:'Choose any arp direction.', target:'#arpSeg',
   },
   {
-    kicker:'rhythm',
-    title:'One clock runs arp and drums.',
-    text:'Set tempo in Play. Program four drum voices on the 16-step grid, choose an arp division, and add swing—the synced arp and drum machine stay phase-locked.',
-    visual:'<div class="tourRack"><i style="--fill:74%"></i><i style="--fill:34%"></i><i style="--fill:88%"></i></div>',
+    id:'drums', kicker:'06 · make a beat',
+    title:'Arp and drums share one clock.',
+    text:'Four synthesized drum voices run on the 16-step grid. Tempo and swing stay locked to synced arpeggios.',
+    task:'Toggle any drum step.', target:'#drumGrid',
   },
   {
-    kicker:'instrument mixer',
-    title:'Every instrument gets its own lane.',
-    text:'The chord pad, arpeggiator, and drums each have level, pan, tone, reverb, and delay. Those mixer controls are patchable to hands and LFOs too.',
-    visual:'<div class="tourRack"><i style="--fill:68%"></i><i style="--fill:48%"></i><i style="--fill:82%"></i></div>',
+    id:'mixer', kicker:'07 · mix',
+    title:'Every instrument gets a lane.',
+    text:'Chord pad, arp, and drums each have level, pan, tone, reverb, and delay. Every mixer control is patchable too.',
+    task:'Move any mixer control.', target:'#mixerBox',
   },
   {
-    kicker:'the rest of the box',
-    title:'Charts, blooms, patches, and takes.',
-    text:'Upload MusicXML for an inline chord chart, send its harmony to the wheel, choose one of five audio-reactive visual scenes, load a factory patch, save your own, or press ● to record a take.',
-    visual:'<div class="tourWheel"></div>',
+    id:'visual', kicker:'08 · bloom',
+    title:'Let the sound paint.',
+    text:'Five canvas scenes react to spectrum, chord root, volume, and chord changes, with an adjustable camera blend.',
+    task:'Choose a visual scene.', target:'#visSelect',
+  },
+  {
+    id:'preset', kicker:'09 · remember it',
+    title:'Load a whole world at once.',
+    text:'Factory and personal patches remember the sound, mixer, rhythm, modulation, and visual state. MusicXML charts live behind ♬ and ● records your take.',
+    task:'Choose a factory patch to finish.', target:'#presetList',
   },
 ];
 const tourOverlay=document.getElementById('tourOverlay');
-let tourStep=0;
+const tourSpotlight=document.getElementById('tourSpotlight');
+const tourCompleted=new Set();
+let tourStep=0, tourTargetOverride=null, tourCameraLoading=false, tourCameraError=false;
+function tourSection(name){
+  const d=[...document.querySelectorAll('details.sect')].find(x=>x.querySelector('summary')?.textContent.trim()===name);
+  if(d) d.open=true;
+  return d;
+}
+function prepareTourStep(){
+  document.getElementById('modPop').classList.remove('open');
+  tourTargetOverride=null;
+  const s=TOUR_STEPS[tourStep];
+  const p=document.getElementById('panel');
+  if(s.id==='wheel'){
+    p.classList.remove('open');
+  }else if(s.id==='settings'){
+    p.classList.remove('open');
+  }else{
+    p.classList.add('open');
+    if(s.id==='hands') tourSection('Hand control');
+    if(s.id==='mod') tourSection('Envelope');
+    if(s.id==='arp') tourSection('Arpeggiator');
+    if(s.id==='drums') tourSection('Drums');
+    if(s.id==='mixer') tourSection('Instrument mixer');
+    if(s.id==='visual') tourSection('Visualizer');
+    if(s.id==='preset') tourSection('Presets');
+  }
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const el=s.target==='wheel'?null:document.querySelector(s.target);
+    if(el) el.scrollIntoView({block:'center',behavior:'auto'});
+    setTimeout(positionTour,40);
+  }));
+}
+function getTourRect(){
+  const s=TOUR_STEPS[tourStep];
+  if(s.target==='wheel'){
+    const r=overlay.getBoundingClientRect(), g=wheelGeom();
+    const sx=r.width/overlay.width, sy=r.height/overlay.height;
+    return {left:r.left+(g.cx-g.r)*sx,top:r.top+(g.cy-g.r)*sy,
+      width:g.r*2*sx,height:g.r*2*sy,radius:'50%'};
+  }
+  const el=document.querySelector(tourTargetOverride||s.target);
+  if(!el) return null;
+  const r=el.getBoundingClientRect(), pad=9;
+  return {left:r.left-pad,top:r.top-pad,width:r.width+pad*2,height:r.height+pad*2,radius:'15px'};
+}
+function positionTour(){
+  if(!tourOverlay.classList.contains('open')) return;
+  const r=getTourRect(); if(!r) return;
+  tourSpotlight.style.left=r.left+'px'; tourSpotlight.style.top=r.top+'px';
+  tourSpotlight.style.width=r.width+'px'; tourSpotlight.style.height=r.height+'px';
+  tourSpotlight.style.borderRadius=r.radius;
+  const card=document.getElementById('tourCard');
+  const cw=card.offsetWidth, ch=card.offsetHeight, gap=22;
+  let x=r.left-cw-gap;
+  if(x<12) x=r.left+r.width+gap;
+  if(x+cw>innerWidth-12) x=Math.max(12,innerWidth-cw-12);
+  let y=clamp(r.top+r.height/2-ch/2,12,innerHeight-ch-12);
+  card.style.left=x+'px'; card.style.top=y+'px';
+}
 function renderTour(){
   const s=TOUR_STEPS[tourStep];
+  const done=tourCompleted.has(tourStep);
   document.getElementById('tourKicker').textContent=s.kicker;
   document.getElementById('tourCount').textContent=`${tourStep+1} / ${TOUR_STEPS.length}`;
-  document.getElementById('tourVisual').innerHTML=s.visual;
+  const task=document.getElementById('tourVisual');
+  if(done) task.textContent='Nice — you did it.';
+  else if(s.id==='hands'&&tourCameraLoading) task.textContent='Starting the hand-tracking camera…';
+  else if(s.id==='hands'&&tourCameraError) task.textContent='Camera access was blocked. Click here to retry, or change a routing dropdown to continue.';
+  else if(s.id==='hands'&&cameraOn) task.textContent='Camera is live. Try it: '+s.task;
+  else task.textContent='Try it: '+s.task;
+  task.classList.toggle('done',done);
   document.getElementById('tourTitle').textContent=s.title;
   document.getElementById('tourText').textContent=s.text;
-  document.getElementById('tourDots').innerHTML=TOUR_STEPS.map((_,i)=>`<i class="${i===tourStep?'active':''}"></i>`).join('');
+  document.getElementById('tourDots').innerHTML=TOUR_STEPS.map((_,i)=>`<i class="${i===tourStep?'active':tourCompleted.has(i)?'done':''}"></i>`).join('');
   document.getElementById('tourBack').style.visibility=tourStep===0?'hidden':'visible';
-  document.getElementById('tourNext').textContent=tourStep===TOUR_STEPS.length-1?'done ✦':'next →';
+  const next=document.getElementById('tourNext');
+  next.disabled=!done;
+  next.textContent=!done?'try it first':tourStep===TOUR_STEPS.length-1?'finish ✦':'next →';
+  requestAnimationFrame(positionTour);
+}
+function completeTourStep(){
+  if(tourCompleted.has(tourStep)) return;
+  tourCompleted.add(tourStep);
+  renderTour();
+}
+async function ensureTourCamera(){
+  if(cameraOn){ tourCameraError=false; renderTour(); return; }
+  if(tourCameraLoading) return;
+  tourCameraLoading=true; tourCameraError=false; renderTour();
+  try{
+    await enableCamera(document.getElementById('loadStatus'));
+    tourCameraError=false;
+  }catch(err){
+    tourCameraError=true;
+  }finally{
+    tourCameraLoading=false;
+    if(tourOverlay.classList.contains('open')&&TOUR_STEPS[tourStep]?.id==='hands') renderTour();
+  }
+}
+function handleTourEvent(e){
+  if(!tourOverlay.classList.contains('open')) return;
+  const s=TOUR_STEPS[tourStep], t=e.target;
+  if(s.id==='wheel'&&e.type==='mousedown'&&t===overlay) completeTourStep();
+  if(s.id==='settings'&&e.type==='click'&&t.closest?.('#gearBtn')&&document.getElementById('panel').classList.contains('open')) completeTourStep();
+  if(s.id==='hands'&&e.type==='change'&&t.closest?.('#mapRows select')) completeTourStep();
+  if(s.id==='mod'){
+    if(e.type==='dblclick'&&t.closest?.('#dVal')){
+      tourTargetOverride='#modSrc';
+      const task=document.getElementById('tourVisual');
+      task.textContent='Now choose a hand or LFO source in the popup.';
+      setTimeout(positionTour,40);
+    }
+    if(e.type==='change'&&t.closest?.('#modSrc')&&t.value!=='none') completeTourStep();
+  }
+  if(s.id==='arp'&&e.type==='click'&&t.closest?.('#arpSeg button')&&t.closest('#arpSeg button').dataset.a!=='off') completeTourStep();
+  if(s.id==='drums'&&e.type==='click'&&t.closest?.('.stepCell')) completeTourStep();
+  if(s.id==='mixer'&&e.type==='input'&&t.closest?.('#mixerBox input')) completeTourStep();
+  if(s.id==='visual'&&e.type==='change'&&t.closest?.('#visSelect')) completeTourStep();
+  if(s.id==='preset'&&e.type==='change'&&t.closest?.('#presetList')&&t.value.startsWith('factory:')) completeTourStep();
+}
+for(const type of ['mousedown','click','input','change','dblclick']) addEventListener(type,handleTourEvent);
+document.getElementById('tourVisual').onclick=()=>{
+  if(TOUR_STEPS[tourStep]?.id==='hands'&&tourCameraError) ensureTourCamera();
+};
+function showTourStep(){
+  prepareTourStep();
+  renderTour();
+  if(TOUR_STEPS[tourStep].id==='hands'&&!cameraOn) ensureTourCamera();
 }
 function openTour(){
-  tourStep=0; renderTour(); tourOverlay.classList.add('open');
+  document.getElementById('songPanel').classList.remove('open');
+  document.body.classList.remove('song-open');
+  tourCompleted.clear(); tourStep=0;
+  tourOverlay.classList.add('open');
+  showTourStep();
 }
-function closeTour(){ tourOverlay.classList.remove('open'); }
+function closeTour(){
+  tourOverlay.classList.remove('open');
+  document.getElementById('modPop').classList.remove('open');
+}
 document.getElementById('tourBtn').onclick=openTour;
-document.getElementById('startTourBtn').onclick=openTour;
-document.getElementById('tourSkip').onclick=closeTour;
-document.getElementById('tourBack').onclick=()=>{ if(tourStep>0){tourStep--;renderTour();} };
-document.getElementById('tourNext').onclick=()=>{
-  if(tourStep<TOUR_STEPS.length-1){tourStep++;renderTour();} else closeTour();
+document.getElementById('startTourBtn').onclick=async()=>{
+  if(!running) await boot(false);
+  if(running) openTour();
 };
-tourOverlay.addEventListener('mousedown',e=>{ if(e.target===tourOverlay) closeTour(); });
+document.getElementById('tourSkip').onclick=closeTour;
+document.getElementById('tourBack').onclick=()=>{ if(tourStep>0){tourStep--;showTourStep();} };
+document.getElementById('tourNext').onclick=()=>{
+  if(!tourCompleted.has(tourStep)) return;
+  if(tourStep<TOUR_STEPS.length-1){tourStep++;showTourStep();} else closeTour();
+};
 addEventListener('keydown',e=>{
   if(!tourOverlay.classList.contains('open')) return;
   if(e.key==='Escape') closeTour();
-  if(e.key==='ArrowLeft'&&tourStep>0){tourStep--;renderTour();}
-  if(e.key==='ArrowRight'){
-    if(tourStep<TOUR_STEPS.length-1){tourStep++;renderTour();} else closeTour();
+  if(e.target&&['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+  if(e.key==='ArrowLeft'&&tourStep>0){tourStep--;showTourStep();}
+  if(e.key==='ArrowRight'&&tourCompleted.has(tourStep)){
+    if(tourStep<TOUR_STEPS.length-1){tourStep++;showTourStep();} else closeTour();
   }
 });
+addEventListener('resize',()=>{ if(tourOverlay.classList.contains('open')) positionTour(); });
+addEventListener('scroll',()=>{ if(tourOverlay.classList.contains('open')) requestAnimationFrame(positionTour); },true);
 
 /* ================================================================
    UI WIRING
@@ -2704,10 +2906,7 @@ async function boot(withCamera){
   try{
     initAudio();
     if(withCamera){
-      await loadModel(status);
-      status.textContent='Requesting camera…';
-      await startCamera();
-      cameraOn=true;
+      await enableCamera(status);
     } else {
       video.style.display='none';
       document.body.style.background='linear-gradient(180deg,#0a2540,#06121c)';
@@ -2718,9 +2917,11 @@ async function boot(withCamera){
     resize();
     running=true; lastTs=performance.now();
     requestAnimationFrame(frame);
+    return true;
   }catch(err){
     status.textContent='Error: '+err.message;
     btns.forEach(b=>b.disabled=false);
+    return false;
   }
 }
 document.getElementById('startBtn').onclick=()=>boot(true);

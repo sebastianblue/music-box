@@ -22,7 +22,7 @@ Run it from a local web server (camera and ES modules are unreliable from a raw 
 - Factory presets (`Aqua Bloom`, `Glass Arp`, `Moon Pond`, `House Halo`) plus local save/load, JSON import/export, and complete mixer/modulation state.
 - Audio recording through `MediaRecorder`.
 - Camera-free mode with number-key and mouse interaction.
-- Light/dark themes, Y2K/aqua-glass intro, and a seven-step animated tutorial available from the intro or the `?` button.
+- Light/dark themes, Y2K/aqua-glass intro, and a nine-step learn-by-doing tutorial available from the intro or the `?` button. It spotlights live controls, waits for each action, and enables the camera automatically when the hand-routing step needs it.
 
 ## Important implementation notes
 
@@ -41,7 +41,7 @@ Run it from a local web server (camera and ES modules are unreliable from a raw 
 3. Open Settings; verify oscillator, ADSR, LFO, mixer, arp, drum, visual, chord, and preset controls.
 4. Double-click a `⌁` mixer or envelope label; map it to an LFO and confirm the value badge animates.
 5. Load each factory preset and confirm theme/visual, mixer, arp, and drum state update without console errors.
-6. Run the guided tour through all seven steps.
+6. Run the guided tour through all nine interactive tasks; confirm the camera starts at the hand-routing step and slider arrow keys do not navigate the tour.
 7. Start the drums and a synced arp; verify swing affects their offbeats without tempo drift.
 8. If camera testing is available, start with camera permission and verify one- and two-hand behavior.
 
